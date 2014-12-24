@@ -56,6 +56,13 @@
 #define DEFAULT_TIMEOUT 1
 #endif
 
+#ifndef RECV_BUFFER_SIZE
+/** @def RECV_BUFFER_SIZE
+ *  Size, in bytes, of the read buffer for the socket.
+ */
+#define RECV_BUFFER_SIZE 4096
+#endif
+
 /** Run the event loop once.
  *  This function will run send any data that has been queued by
  *  xmpp_send and related functions and run through the Strophe even
@@ -79,7 +86,7 @@ void xmpp_run_once(xmpp_ctx_t *ctx, const unsigned long timeout)
     struct timeval tv;
     xmpp_send_queue_t *sq, *tsq;
     int towrite;
-    char buf[4096];
+    char buf[RECV_BUFFER_SIZE];
     uint64_t next;
     long usec;
     int tls_read_bytes = 0;
@@ -267,9 +274,9 @@ void xmpp_run_once(xmpp_ctx_t *ctx, const unsigned long timeout)
 	case XMPP_STATE_CONNECTED:
 	    if (FD_ISSET(conn->sock, &rfds) || (conn->tls && tls_pending(conn->tls))) {
 		if (conn->tls) {
-		    ret = tls_read(conn->tls, buf, 4096);
+		    ret = tls_read(conn->tls, buf, RECV_BUFFER_SIZE);
 		} else {
-		    ret = sock_read(conn->sock, buf, 4096);
+		    ret = sock_read(conn->sock, buf, RECV_BUFFER_SIZE);
 		}
 
 		if (ret > 0) {
