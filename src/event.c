@@ -37,11 +37,14 @@
 #ifndef _WIN32
 #include <sys/select.h>
 #include <errno.h>
+#include <unistd.h>
+#define _sleep(x) usleep(x*1000)
 #else
 #include <winsock2.h>
 #define ETIMEDOUT WSAETIMEDOUT
 #define ECONNRESET WSAECONNRESET
 #define ECONNABORTED WSAECONNABORTED
+#define _sleep(x) Sleep(x)
 #endif
 
 #include <strophe.h>
@@ -54,6 +57,13 @@
  *  This is set to 1 millisecond.
  */
 #define DEFAULT_TIMEOUT 1
+#endif
+
+#ifndef RECV_BUFFER_SIZE
+/** @def RECV_BUFFER_SIZE
+ *  Size, in bytes, of the read buffer for the socket.
+ */
+#define RECV_BUFFER_SIZE 4096
 #endif
 
 /** Run the event loop once.
@@ -79,7 +89,7 @@ void xmpp_run_once(xmpp_ctx_t *ctx, const unsigned long timeout)
     struct timeval tv;
     xmpp_send_queue_t *sq, *tsq;
     int towrite;
-    char buf[4096];
+    char buf[RECV_BUFFER_SIZE];
     uint64_t next;
     long usec;
     int tls_read_bytes = 0;
@@ -218,13 +228,20 @@ void xmpp_run_once(xmpp_ctx_t *ctx, const unsigned long timeout)
 	    tls_read_bytes += tls_pending(conn->tls);
 	}
 	
-	if (conn->sock > max) max = conn->sock;
+	if (conn->state != XMPP_STATE_DISCONNECTED && conn->sock > max)
+	    max = conn->sock;
 
 	connitem = connitem->next;
     }
 
     /* check for events */
-    ret = select(max + 1, &rfds,  &wfds, NULL, &tv);
+    if (max > 0)
+        ret = select(max + 1, &rfds,  &wfds, NULL, &tv);
+    else {
+        if (timeout > 0)
+            _sleep(timeout);
+        return;
+    }
 
     /* select errored */
     if (ret < 0) {
@@ -267,9 +284,9 @@ void xmpp_run_once(xmpp_ctx_t *ctx, const unsigned long timeout)
 	case XMPP_STATE_CONNECTED:
 	    if (FD_ISSET(conn->sock, &rfds) || (conn->tls && tls_pending(conn->tls))) {
 		if (conn->tls) {
-		    ret = tls_read(conn->tls, buf, 4096);
+		    ret = tls_read(conn->tls, buf, RECV_BUFFER_SIZE);
 		} else {
-		    ret = sock_read(conn->sock, buf, 4096);
+		    ret = sock_read(conn->sock, buf, RECV_BUFFER_SIZE);
 		}
 
 		if (ret > 0) {
