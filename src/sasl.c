@@ -46,7 +46,7 @@ char *sasl_plain(xmpp_ctx_t *ctx, const char *authid, const char *password) {
 	memcpy(msg+1, authid, idlen);
 	msg[1+idlen] = '\0';
 	memcpy(msg+1+idlen+1, password, passlen);
-	result = base64_encode(ctx, (unsigned char *)msg, 2 + idlen + passlen);
+	result = strophe_base64_encode(ctx, (unsigned char *)msg, 2 + idlen + passlen);
 	xmpp_free(ctx, msg);
     }
 
@@ -92,7 +92,7 @@ static hash_t *_parse_digest_challenge(xmpp_ctx_t *ctx, const char *msg)
     char *key, *value;
     unsigned char *s, *t;
 
-    text = base64_decode(ctx, msg, strlen(msg));
+    text = strophe_base64_decode(ctx, msg, strlen(msg));
     if (text == NULL) {
 	xmpp_error(ctx, "SASL", "couldn't Base64 decode challenge!");
 	return NULL;
@@ -344,7 +344,7 @@ char *sasl_digest_md5(xmpp_ctx_t *ctx, const char *challenge,
     hash_release(table); /* also frees value strings */
 
     /* reuse response for the base64 encode of our result */
-    response = base64_encode(ctx, (unsigned char *)result, strlen(result));
+    response = strophe_base64_encode(ctx, (unsigned char *)result, strlen(result));
     xmpp_free(ctx, result);
 
     return response;
@@ -396,11 +396,11 @@ char *sasl_scram_sha1(xmpp_ctx_t *ctx, const char *challenge,
         goto out;
     }
 
-    sval = (char *)base64_decode(ctx, s, strlen(s));
+    sval = (char *)strophe_base64_decode(ctx, s, strlen(s));
     if (!sval) {
         goto out;
     }
-    sval_len = base64_decoded_len(ctx, s, strlen(s));
+    sval_len = strophe_base64_decoded_len(ctx, s, strlen(s));
     ival = strtol(i, &saveptr, 10);
 
     auth_len = 10 + strlen(r) + strlen(first_bare) + strlen(challenge);
@@ -426,7 +426,7 @@ char *sasl_scram_sha1(xmpp_ctx_t *ctx, const char *challenge,
         sign[j] ^= key[j];
     }
 
-    sign_b64 = base64_encode(ctx, sign, sizeof(sign));
+    sign_b64 = strophe_base64_encode(ctx, sign, sizeof(sign));
     if (!sign_b64) {
         goto out_response;
     }
@@ -439,7 +439,7 @@ char *sasl_scram_sha1(xmpp_ctx_t *ctx, const char *challenge,
     strcat(response, sign_b64);
     xmpp_free(ctx, sign_b64);
 
-    response_b64 = base64_encode(ctx, (unsigned char *)response,
+    response_b64 = strophe_base64_encode(ctx, (unsigned char *)response,
                                  strlen(response));
     if (!response_b64) {
         goto out_response;
@@ -495,13 +495,13 @@ static const char _base64_charmap[65] = {
     '='
 };
 
-int base64_encoded_len(xmpp_ctx_t *ctx, const unsigned len)
+int strophe_base64_encoded_len(xmpp_ctx_t *ctx, const unsigned len)
 {
     /* encoded steam is 4 bytes for every three, rounded up */
     return ((len + 2)/3) << 2;
 }
 
-char *base64_encode(xmpp_ctx_t *ctx, 
+char *strophe_base64_encode(xmpp_ctx_t *ctx, 
 		    const unsigned char * const buffer, const unsigned len)
 {
     int clen;
@@ -509,7 +509,7 @@ char *base64_encode(xmpp_ctx_t *ctx,
     uint32_t word, hextet;
     int i;
 
-    clen = base64_encoded_len(ctx, len);
+    clen = strophe_base64_encoded_len(ctx, len);
     cbuf = xmpp_alloc(ctx, clen + 1);
     if (cbuf != NULL) {
 	c = cbuf;
@@ -555,7 +555,7 @@ char *base64_encode(xmpp_ctx_t *ctx,
     return cbuf;
 }
 
-int base64_decoded_len(xmpp_ctx_t *ctx, 
+int strophe_base64_decoded_len(xmpp_ctx_t *ctx, 
 		       const char * const buffer, const unsigned len)
 {
     int nudge;
@@ -579,7 +579,7 @@ int base64_decoded_len(xmpp_ctx_t *ctx,
     return 3 * (len >> 2) - nudge;
 }
 
-unsigned char *base64_decode(xmpp_ctx_t *ctx,
+unsigned char *strophe_base64_decode(xmpp_ctx_t *ctx,
 			     const char * const buffer, const unsigned len)
 {
     int dlen;
@@ -590,7 +590,7 @@ unsigned char *base64_decode(xmpp_ctx_t *ctx,
     /* len must be a multiple of 4 */
     if (len & 0x03) return NULL;
 
-    dlen = base64_decoded_len(ctx, buffer, len);
+    dlen = strophe_base64_decoded_len(ctx, buffer, len);
     dbuf = xmpp_alloc(ctx, dlen + 1);
     if (dbuf != NULL) {
 	d = dbuf;

@@ -455,7 +455,7 @@ static int _handle_scram_sha1_challenge(xmpp_conn_t * const conn,
         if (!text)
             goto err;
 
-        challenge = (char *)base64_decode(conn->ctx, text, strlen(text));
+        challenge = (char *)strophe_base64_decode(conn->ctx, text, strlen(text));
         xmpp_free(conn->ctx, text);
         if (!challenge)
             goto err;
@@ -515,7 +515,7 @@ static char *_get_nonce(xmpp_ctx_t *ctx)
         *(time_t *)(buffer + sizeof(clock_t)) = (time_t)rand();
     }
 
-    return base64_encode(ctx, buffer, sizeof(buffer));
+    return strophe_base64_encode(ctx, buffer, sizeof(buffer));
 }
 
 static char *_make_scram_sha1_init_msg(xmpp_conn_t * const conn)
@@ -662,7 +662,7 @@ static void _auth(xmpp_conn_t * const conn)
             return;
         }
 
-        str = (char *)base64_encode(conn->ctx, (unsigned char *)scram_init,
+        str = (char *)strophe_base64_encode(conn->ctx, (unsigned char *)scram_init,
                                     strlen(scram_init));
         if (!str) {
             xmpp_free(conn->ctx, scram_init);
